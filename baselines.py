@@ -76,6 +76,14 @@ CUR = {"nbase": 0}
 
 def _screen(kind, X, y):
     """univariate screening score per column (training data only)."""
+    if kind == "bin":
+        from scipy.stats import rankdata
+        y = np.asarray(y).astype(int); n1 = int(y.sum()); n0 = len(y) - n1
+        if n1 == 0 or n0 == 0:
+            return np.zeros(X.shape[1])
+        R = rankdata(X, axis=0)
+        auc = (R[y == 1].sum(0) - n1 * (n1 + 1) / 2.0) / (n1 * n0)
+        return np.nan_to_num(np.abs(auc - 0.5) * (X.std(0) >= 1e-9))
     sc = np.zeros(X.shape[1])
     for j in range(X.shape[1]):
         if X[:, j].std() < 1e-9:

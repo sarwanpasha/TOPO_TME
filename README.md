@@ -19,6 +19,7 @@ Topological descriptors of the tumour microenvironment from single-cell spatial 
 | `cellenc.py` | self-supervised cell encoder (GPU training, OpenVINO inference) for learned-embedding fields |
 | `paired.py`, `paired_fast.py` | paired patient-level bootstrap tests per task and Wilcoxon tests across tasks |
 | `aggregate.py` | average-rank summary over all methods and tasks |
+| `interp.py` | which descriptors carry signal beyond composition (conditional likelihood-ratio tests, BH-FDR, cross-validated AUROC gain) |
 | `get_data.py`, `get_luad.py`, `preprocess.py`, `prep_luad.py` | download (HTTP range reads into the public archives) and preprocessing of each cohort |
 | `synth.py` | synthetic marked point processes with known topological ground truth |
 
