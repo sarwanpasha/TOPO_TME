@@ -20,6 +20,10 @@ Topological descriptors of the tumour microenvironment from single-cell spatial 
 | `paired.py`, `paired_fast.py` | paired patient-level bootstrap tests per task and Wilcoxon tests across tasks |
 | `aggregate.py` | average-rank summary over all methods and tasks |
 | `surv_interp.py` | whether descriptors add prognostic information beyond clinical covariates (penalised Cox, LR tests, BH-FDR, CV C-index gain) |
+| `surv_oof.py` | nested cross-validated topology risk score (screening + ridge Cox on top of a clinical offset, all inside training folds) and its 1-df likelihood-ratio test beyond clinical covariates (and composition) |
+| `harmonize.py` | panel-agnostic topology: cell types mapped to 7 broad classes, composition-calibrated type-level persistence |
+| `surv_loco.py` | leave-one-cohort-out transfer of a harmonised topology risk score (stratified ridge Cox on clinical offsets; Stouffer meta-analysis) |
+| `gnn_quick.py` | paired tests of TopoGate against GNN baselines on cohorts where GNN runs are available |
 | `interp.py` | which descriptors carry signal beyond composition (conditional likelihood-ratio tests, BH-FDR, cross-validated AUROC gain) |
 | `get_data.py`, `get_luad.py`, `preprocess.py`, `prep_luad.py` | download (HTTP range reads into the public archives) and preprocessing of each cohort |
 | `synth.py` | synthetic marked point processes with known topological ground truth |
