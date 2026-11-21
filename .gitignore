@@ -1,0 +1,8 @@
+raw/
+data/
+results/
+logs/
+__pycache__/
+*.npz
+*.pkl
+*.log
