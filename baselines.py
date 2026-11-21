@@ -31,6 +31,7 @@ FSETS = {"comp": ["comp", "logn"], "mm": ["mm", "logn"], "comp_mm": ["comp", "mm
          "cn": ["comp", "mm", "logn", "cn"], "c_cn": ["comp", "logn", "cn"],
          "znull": ["comp", "mm", "logn", "znull"], "c_znull": ["comp", "logn", "znull"],
          "zall": ["comp", "mm", "logn", "znull", "compact", "cross"],
+         "cnz": ["comp", "mm", "logn", "cn", "znull"], "c_cnz": ["comp", "logn", "cn", "znull"],
          "c_ctype": ["comp", "logn", "ctype"], "c_ctype_cross": ["comp", "logn", "ctype", "cross"]}
 G = {}
 
@@ -65,12 +66,15 @@ def patient_feats(cohort):
             continue
         X = np.concatenate([fe[k].reshape(len(pid), -1) for k in keys], 1)
         NBASE[name] = sum(fe[k].reshape(len(pid), -1).shape[1] for k in keys if k in ("comp", "mm", "logn"))
+        if name in ("cnz", "c_cnz"):
+            NBASE0[name] = NBASE[name]; NBASE[name] += fe["cn"].reshape(len(pid), -1).shape[1]
         df = pd.DataFrame(X); df["pid"] = pid
         out[name] = df.groupby("pid").mean()
     return out
 
 
 NBASE = {}
+NBASE0 = {}
 CUR = {"nbase": 0}
 
 
@@ -258,7 +262,45 @@ def _sgate2(kind, Xtr, ytr, Xte, seed):
     pt = fit_predict(kind, "estrisk", Xtr, ytr, Xte, seed)
     return _grk(pb) + al * _grk(pt)
 
+
+def _gate4(kind, Xtr, ytr, Xte, seed):
+    from sklearn.model_selection import StratifiedKFold
+    nb, nb0 = CUR["nbase"], CUR.get("nbase0", CUR["nbase"])
+    Xtr = np.nan_to_num(Xtr); Xte = np.nan_to_num(Xte)
+    sub = (lambda idx: ytr[idx]) if kind == "bin" else (lambda idx: (ytr[0][idx], ytr[1][idx]))
+    score = (lambda idx, p: C.auroc(ytr[idx], p)) if kind == "bin" else (lambda idx, p: C.cindex(ytr[0][idx], ytr[1][idx], p))
+    if kind == "bin":
+        cands = {}
+        for tag, k in (("cm", nb0), ("cmcn", nb)):
+            cands[(tag, "default")] = ("lgbm", k, {})
+            cands[(tag, "tuned")] = ("lgbm", k, _inner_cv_pick(kind, "lgbm", Xtr[:, :k], ytr, seed, GRIDS["lgbm"]))
+        topo = "lgbmsel"
+    else:
+        cands = {}
+        for tag, k in (("c", nb0), ("ccn", nb)):
+            cands[(tag, "rsf2")] = ("rsf2", k, _inner_cv_pick(kind, "rsf2", Xtr[:, :k], ytr, seed, GRIDS["rsf2"]))
+        topo = "estrisk"
+    sc = {(c, al): [] for c in cands for al in GALPHAS}
+    strat = ytr if kind == "bin" else ytr[1]
+    for a_, b_ in StratifiedKFold(3, shuffle=True, random_state=seed + 600).split(Xtr, strat):
+        CUR["nbase"] = nb
+        pt = fit_predict(kind, topo, Xtr[a_], sub(a_), Xtr[b_], seed)
+        for c, (m, k, hp) in cands.items():
+            pb = fit_predict(kind, m, Xtr[a_][:, :k], sub(a_), Xtr[b_][:, :k], seed, hp)
+            for al in GALPHAS:
+                sc[(c, al)].append(score(b_, _grk(pb) + al * _grk(pt)))
+    c, al = max(sc, key=lambda q: (np.nanmean(sc[q]), -q[1]))
+    m, k, hp = cands[c]
+    pb = fit_predict(kind, m, Xtr[:, :k], ytr, Xte[:, :k], seed, hp)
+    if al == 0:
+        return _grk(pb)
+    CUR["nbase"] = nb
+    pt = fit_predict(kind, topo, Xtr, ytr, Xte, seed)
+    return _grk(pb) + al * _grk(pt)
+
 def fit_predict(kind, model, Xtr, ytr, Xte, seed, hp=None):
+    if model in ("lgbmgate4", "rsfgate4"):
+        return _gate4(kind, Xtr, ytr, Xte, seed)
     if model == "rsfgate2":
         return _sgate2(kind, Xtr, ytr, Xte, seed)
     if model == "lgbmgate2":
@@ -423,7 +465,7 @@ def run_one(cfg):
     try:
         df, kind = C.task_frame(G["pat"], G["cohort"], task)
         PF = G["pf"][fset]
-        CUR["nbase"] = NBASE.get(fset, 0)
+        CUR["nbase"] = NBASE.get(fset, 0); CUR["nbase0"] = NBASE0.get(fset, CUR["nbase"])
         df = df[df["patient_id"].isin(PF.index)].reset_index(drop=True)
         if external:
             edf, _ = C.task_frame(G["epat"], G["ecohort"], task)
