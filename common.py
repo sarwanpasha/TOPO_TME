@@ -1,4 +1,4 @@
-"""Shared utilities: paths, cache I/O, folds, metrics, Cox loss."""
+﻿"""Shared utilities: paths, cache I/O, folds, metrics, Cox loss."""
 import os, json, pickle
 import numpy as np
 import pandas as pd
@@ -24,6 +24,8 @@ TASKS = {
     "codex": {"DII": ("bin", "DII"), "OS": ("surv", ("os_time", "os_event"))},
     "luad": {"progression": ("bin", "progression"), "stage34": ("bin", "stage34"), "solid": ("bin", "solid"),
              "OS": ("surv", ("os_time", "os_event"))},
+    "hoch": {"response": ("bin", "response"), "relapse": ("bin", "relapse"), "death": ("bin", "death")},
+    "cords": {"OS": ("surv", ("os_time", "os_event")), "DFS": ("surv", ("dfs_time", "dfs_event")), "relapse": ("bin", "relapse"), "lnmet": ("bin", "lnmet"), "grade3": ("bin", "grade3"), "squamous": ("bin", "squamous")},
     "synth_ring": {"y": ("bin", "y")},
     "synth_interact": {"y": ("bin", "y")},
     "synth_channel": {"y": ("bin", "y")},
@@ -125,3 +127,5 @@ def result_path(cohort, task, method, fold, seed, tag=""):
     d = os.path.join(RES, cohort + tag, task, method)
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, f"f{fold}_s{seed}.json")
+
+
