@@ -8,7 +8,7 @@ from paired import compare
 ours = "lgbmgate4_cnz"
 rng = np.random.default_rng(0)
 for prior in ("gin", "gat"):
-    for c in ("codex", "luad", "basel"):
+    for c in ("codex", "luad", "basel", "danenberg"):
         d = os.path.join(C.RES, c)
         for t in sorted(os.listdir(d)):
             if C.TASKS.get(c, {}).get(t, ("",))[0] != "bin" or not os.path.isdir(os.path.join(d, t, prior)):
