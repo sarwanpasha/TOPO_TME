@@ -31,6 +31,8 @@ FSETS = {"comp": ["comp", "logn"], "mm": ["mm", "logn"], "comp_mm": ["comp", "mm
          "cn": ["comp", "mm", "logn", "cn"], "c_cn": ["comp", "logn", "cn"],
          "znull": ["comp", "mm", "logn", "znull"], "c_znull": ["comp", "logn", "znull"],
          "zall": ["comp", "mm", "logn", "znull", "compact", "cross"],
+         "cnzT": ["comp", "mm", "logn", "cn", "zT"], "cnzX": ["comp", "mm", "logn", "cn", "zX"],
+         "cnzM": ["comp", "mm", "logn", "cn", "zM"], "cnzTX": ["comp", "mm", "logn", "cn", "zT", "zX"],
          "cnz": ["comp", "mm", "logn", "cn", "znull"], "c_cnz": ["comp", "logn", "cn", "znull"],
          "c_ctype": ["comp", "logn", "ctype"], "c_ctype_cross": ["comp", "logn", "ctype", "cross"]}
 G = {}
@@ -60,13 +62,18 @@ def patient_feats(cohort):
         _f = os.path.join(C.cohort_dir(cohort), f"feats_{_k}.npz")
         if os.path.exists(_f):
             z = np.load(_f); assert (z["image_id"] == fe["image_id"]).all(); fe[_k] = z[_k]
+    if "znull" in fe:
+        _nt = fe["comp"].reshape(len(pid), -1).shape[1]; _nm = fe["mm"].reshape(len(pid), -1).shape[1]
+        _a = _nt * 15; _b = _a + _nt * (_nt + 1) // 2 * 6; _Z = fe["znull"].reshape(len(pid), -1)
+        if _b + _nm * 30 == _Z.shape[1]:
+            fe["zT"], fe["zX"], fe["zM"] = _Z[:, :_a], _Z[:, _a:_b], _Z[:, _b:]
     out = {}
     for name, keys in FSETS.items():
         if any(k not in fe for k in keys):
             continue
         X = np.concatenate([fe[k].reshape(len(pid), -1) for k in keys], 1)
         NBASE[name] = sum(fe[k].reshape(len(pid), -1).shape[1] for k in keys if k in ("comp", "mm", "logn"))
-        if name in ("cnz", "c_cnz"):
+        if name in ("cnz", "c_cnz") or name.startswith("cnz"):
             NBASE0[name] = NBASE[name]; NBASE[name] += fe["cn"].reshape(len(pid), -1).shape[1]
         df = pd.DataFrame(X); df["pid"] = pid
         out[name] = df.groupby("pid").mean()
@@ -290,6 +297,11 @@ def _gate4(kind, Xtr, ytr, Xte, seed):
             for al in GALPHAS:
                 sc[(c, al)].append(score(b_, _grk(pb) + al * _grk(pt)))
     c, al = max(sc, key=lambda q: (np.nanmean(sc[q]), -q[1]))
+    if CUR.get("log"):
+        rec = dict(CUR.get("tag", {}), kind=kind, base="/".join(c), alpha=al,
+                   scores={"/".join(q[0]) + "|" + str(q[1]): float(np.nanmean(v)) for q, v in sc.items()})
+        with open(os.path.join(C.RES, "gatelog", f"{os.getpid()}.jsonl"), "a") as fh:
+            fh.write(json.dumps(rec) + "\n")
     m, k, hp = cands[c]
     pb = fit_predict(kind, m, Xtr[:, :k], ytr, Xte[:, :k], seed, hp)
     if al == 0:
@@ -299,7 +311,8 @@ def _gate4(kind, Xtr, ytr, Xte, seed):
     return _grk(pb) + al * _grk(pt)
 
 def fit_predict(kind, model, Xtr, ytr, Xte, seed, hp=None):
-    if model in ("lgbmgate4", "rsfgate4"):
+    if model in ("lgbmgate4", "rsfgate4", "lgbmgate4L", "rsfgate4L"):
+        CUR["log"] = model.endswith("L")
         return _gate4(kind, Xtr, ytr, Xte, seed)
     if model == "rsfgate2":
         return _sgate2(kind, Xtr, ytr, Xte, seed)
@@ -466,6 +479,7 @@ def run_one(cfg):
         df, kind = C.task_frame(G["pat"], G["cohort"], task)
         PF = G["pf"][fset]
         CUR["nbase"] = NBASE.get(fset, 0); CUR["nbase0"] = NBASE0.get(fset, CUR["nbase"])
+        CUR["tag"] = dict(cohort=G["cohort"], task=task, fold=fold, seed=seed, external=external)
         df = df[df["patient_id"].isin(PF.index)].reset_index(drop=True)
         if external:
             edf, _ = C.task_frame(G["epat"], G["ecohort"], task)
