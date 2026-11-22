@@ -33,6 +33,7 @@ FSETS = {"comp": ["comp", "logn"], "mm": ["mm", "logn"], "comp_mm": ["comp", "mm
          "zall": ["comp", "mm", "logn", "znull", "compact", "cross"],
          "cnzT": ["comp", "mm", "logn", "cn", "zT"], "cnzX": ["comp", "mm", "logn", "cn", "zX"],
          "cnzM": ["comp", "mm", "logn", "cn", "zM"], "cnzTX": ["comp", "mm", "logn", "cn", "zT", "zX"],
+         "cnzP": ["comp", "mm", "logn", "cn", "zP"],
          "cnz": ["comp", "mm", "logn", "cn", "znull"], "c_cnz": ["comp", "logn", "cn", "znull"],
          "c_ctype": ["comp", "logn", "ctype"], "c_ctype_cross": ["comp", "logn", "ctype", "cross"]}
 G = {}
@@ -67,6 +68,7 @@ def patient_feats(cohort):
         _a = _nt * 15; _b = _a + _nt * (_nt + 1) // 2 * 6; _Z = fe["znull"].reshape(len(pid), -1)
         if _b + _nm * 30 == _Z.shape[1]:
             fe["zT"], fe["zX"], fe["zM"] = _Z[:, :_a], _Z[:, _a:_b], _Z[:, _b:]
+        fe["zP"] = _Z[np.random.default_rng(12345).permutation(len(_Z))]
     out = {}
     for name, keys in FSETS.items():
         if any(k not in fe for k in keys):
@@ -287,14 +289,14 @@ def _gate4(kind, Xtr, ytr, Xte, seed):
         for tag, k in (("c", nb0), ("ccn", nb)):
             cands[(tag, "rsf2")] = ("rsf2", k, _inner_cv_pick(kind, "rsf2", Xtr[:, :k], ytr, seed, GRIDS["rsf2"]))
         topo = "estrisk"
-    sc = {(c, al): [] for c in cands for al in GALPHAS}
+    sc = {(c, al): [] for c in cands for al in CUR.get("alphas", GALPHAS)}
     strat = ytr if kind == "bin" else ytr[1]
     for a_, b_ in StratifiedKFold(3, shuffle=True, random_state=seed + 600).split(Xtr, strat):
         CUR["nbase"] = nb
         pt = fit_predict(kind, topo, Xtr[a_], sub(a_), Xtr[b_], seed)
         for c, (m, k, hp) in cands.items():
             pb = fit_predict(kind, m, Xtr[a_][:, :k], sub(a_), Xtr[b_][:, :k], seed, hp)
-            for al in GALPHAS:
+            for al in CUR.get("alphas", GALPHAS):
                 sc[(c, al)].append(score(b_, _grk(pb) + al * _grk(pt)))
     c, al = max(sc, key=lambda q: (np.nanmean(sc[q]), -q[1]))
     if CUR.get("log"):
@@ -311,8 +313,9 @@ def _gate4(kind, Xtr, ytr, Xte, seed):
     return _grk(pb) + al * _grk(pt)
 
 def fit_predict(kind, model, Xtr, ytr, Xte, seed, hp=None):
-    if model in ("lgbmgate4", "rsfgate4", "lgbmgate4L", "rsfgate4L"):
+    if model in ("lgbmgate4", "rsfgate4", "lgbmgate4L", "rsfgate4L", "lgbmgate4B"):
         CUR["log"] = model.endswith("L")
+        CUR["alphas"] = (0.0,) if model.endswith("B") else GALPHAS
         return _gate4(kind, Xtr, ytr, Xte, seed)
     if model == "rsfgate2":
         return _sgate2(kind, Xtr, ytr, Xte, seed)
