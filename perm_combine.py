@@ -4,7 +4,7 @@ from scipy.stats import norm, chi2
 
 # observed statistics and HR direction from the nested-CV runs
 OBS = {"basel": (3.536590679933056, 1.2307), "luad": (0.2230650938126928, 1.0309),
-       "danenberg": (chi2.isf(0.017, 1), 1.137), "cords": (7.442009200727625, 1.1094)}
+       "danenberg": (5.648606144432506, 1.1367), "cords": (7.442009200727625, 1.1094)}
 
 
 def p_perm(c):
