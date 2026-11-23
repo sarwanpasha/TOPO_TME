@@ -77,8 +77,14 @@ def _init(g):
 
 
 def one(seed):
+    f = os.path.join(G["ckdir"], f"{seed}.txt") if G.get("ckdir") else None
+    if f and os.path.exists(f):
+        return float(open(f).read())
     rng = np.random.default_rng(seed)
-    return pipeline(G["Tm"][rng.permutation(len(G["t"]))], G["B"], G["t"], G["e"], G["cache"], G["R"])["lr"]
+    v = pipeline(G["Tm"][rng.permutation(len(G["t"]))], G["B"], G["t"], G["e"], G["cache"], G["R"])["lr"]
+    if f:
+        open(f, "w").write(repr(float(v)))
+    return v
 
 
 if __name__ == "__main__":
@@ -94,8 +100,10 @@ if __name__ == "__main__":
         if base_name not in BASES:
             continue
         cache = build_cache(B, t, e, R)
+        ckdir = os.path.join(C.RES, "interp", "permck", f"{cohort}_{ep}_{base_name.replace('+', '_')}")
+        os.makedirs(ckdir, exist_ok=True)
         obs = pipeline(Tm, B, t, e, cache, R)
-        with mp.get_context("spawn").Pool(W, initializer=_init, initargs=(dict(Tm=Tm, B=B, t=t, e=e, cache=cache, R=R),)) as p:
+        with mp.get_context("spawn").Pool(W, initializer=_init, initargs=(dict(Tm=Tm, B=B, t=t, e=e, cache=cache, R=R, ckdir=ckdir),)) as p:
             null = []
             for v in p.imap_unordered(one, range(1000, 1000 + NP), chunksize=1):
                 null.append(v)
