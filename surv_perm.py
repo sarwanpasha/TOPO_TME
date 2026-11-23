@@ -1,4 +1,4 @@
-﻿"""Permutation calibration of the nested cross-validated topology risk score (addresses the optimism of testing
+"""Permutation calibration of the nested cross-validated topology risk score (addresses the optimism of testing
 pre-validated scores with a nominal chi-square reference).
 The whole pipeline of surv_oof.py (screening, ridge Cox on a clinical offset, inner-CV choice of k and lambda, R repeats
 of 5-fold CV, final likelihood-ratio statistic) is re-run after permuting the rows of the topology matrix across
@@ -86,6 +86,9 @@ if __name__ == "__main__":
     NP = int(sys.argv[3]) if len(sys.argv) > 3 else 500; R = int(sys.argv[4]) if len(sys.argv) > 4 else 5
     W = int(sys.argv[5]) if len(sys.argv) > 5 else 5
     t, e, Bcl, Bcc, Tm = load(cohort, ep)
+    _wf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "perm_workers.txt")
+    if os.path.exists(_wf):
+        W = int(open(_wf).read().strip())
     BASES = sys.argv[6].split(",") if len(sys.argv) > 6 else ["clinical", "clinical+composition"]
     for base_name, B in (("clinical", Bcl), ("clinical+composition", Bcc)):
         if base_name not in BASES:
@@ -93,7 +96,12 @@ if __name__ == "__main__":
         cache = build_cache(B, t, e, R)
         obs = pipeline(Tm, B, t, e, cache, R)
         with mp.get_context("spawn").Pool(W, initializer=_init, initargs=(dict(Tm=Tm, B=B, t=t, e=e, cache=cache, R=R),)) as p:
-            null = np.array(p.map(one, range(1000, 1000 + NP), chunksize=4))
+            null = []
+            for v in p.imap_unordered(one, range(1000, 1000 + NP), chunksize=1):
+                null.append(v)
+                if len(null) % 5 == 0:
+                    print("progress", cohort, ep, base_name, len(null), NP, flush=True)
+            null = np.array(null)
         res = dict(cohort=cohort, endpoint=ep, base=base_name, n=len(t), events=int(e.sum()), hr_per_sd=obs["hr_per_sd"],
                    lr_obs=obs["lr"], p_chi2=obs["p"], n_perm=NP, repeats=R, p_perm=float((1 + (null >= obs["lr"]).sum()) / (1 + NP)),
                    null_mean_lr=float(null.mean()), null_q95=float(np.quantile(null, 0.95)), frac_null_gt_3p84=float((null > 3.84).mean()))

@@ -37,6 +37,9 @@ FSETS = {"comp": ["comp", "logn"], "mm": ["mm", "logn"], "comp_mm": ["comp", "mm
          "cnzD": ["comp", "mm", "logn", "cn", "znulld"], "cnzC": ["comp", "mm", "logn", "cn", "connz"],
          "cnzCr": ["comp", "mm", "logn", "cn", "connr"], "cnzA": ["comp", "mm", "logn", "cn", "alpha"],
          "cnzMP": ["comp", "mm", "logn", "cn", "mp"], "cnzDk": ["comp", "mm", "logn", "cn", "dowker"],
+         "cnzLA": ["comp", "mm", "logn", "cn", "LA"], "cnzLD": ["comp", "mm", "logn", "cn", "LD"],
+         "cnzLT": ["comp", "mm", "logn", "cn", "LT"], "cnzLR": ["comp", "mm", "logn", "cn", "LR"],
+         "cnzLM": ["comp", "mm", "logn", "cn", "LM"], "cnzLS": ["comp", "mm", "logn", "cn", "LD", "LT", "LR", "LM"],
          "cnz": ["comp", "mm", "logn", "cn", "znull"], "c_cnz": ["comp", "logn", "cn", "znull"],
          "c_ctype": ["comp", "logn", "ctype"], "c_ctype_cross": ["comp", "logn", "ctype", "cross"]}
 G = {}
@@ -75,6 +78,11 @@ def patient_feats(cohort):
     if "alttopo" in fe:
         _K = fe["comp"].reshape(len(pid), -1).shape[1]; _A = fe.pop("alttopo")
         fe["alpha"], fe["mp"], fe["dowker"] = _A[:, :12 * _K], _A[:, 12 * _K:48 * _K], _A[:, 48 * _K:]
+    _f = os.path.join(C.cohort_dir(cohort), "feats_ladder.npz")
+    if os.path.exists(_f):
+        z = np.load(_f); assert (z["image_id"] == fe["image_id"]).all()
+        import ladder_analysis as _LA
+        fe.update(_LA.components(z["ladder"], int(z["n_type_desc"]), int(z["n_marker_desc"])))
     if "znull" in fe:
         _nt = fe["comp"].reshape(len(pid), -1).shape[1]; _nm = fe["mm"].reshape(len(pid), -1).shape[1]
         _a = _nt * 15; _b = _a + _nt * (_nt + 1) // 2 * 6; _Z = fe["znull"].reshape(len(pid), -1)
