@@ -26,7 +26,6 @@ TASKS = {
              "OS": ("surv", ("os_time", "os_event"))},
     "hoch": {"response": ("bin", "response"), "relapse": ("bin", "relapse"), "death": ("bin", "death")},
     "luad_r0": {"progression": ("bin", "progression"), "stage34": ("bin", "stage34"), "solid": ("bin", "solid")},
-    "dryad": {"OS": ("surv", ("os_time", "os_event")), "lusc": ("bin", "lusc"), "io_response": ("bin", "io_response")},
     "cords": {"OS": ("surv", ("os_time", "os_event")), "DFS": ("surv", ("dfs_time", "dfs_event")), "relapse": ("bin", "relapse"), "lnmet": ("bin", "lnmet"), "grade3": ("bin", "grade3"), "squamous": ("bin", "squamous")},
     "synth_ring": {"y": ("bin", "y")},
     "synth_interact": {"y": ("bin", "y")},
