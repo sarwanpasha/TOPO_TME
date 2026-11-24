@@ -41,6 +41,10 @@ FSETS = {"comp": ["comp", "logn"], "mm": ["mm", "logn"], "comp_mm": ["comp", "mm
          "cnzLT": ["comp", "mm", "logn", "cn", "LT"], "cnzLR": ["comp", "mm", "logn", "cn", "LR"],
          "cnzLM": ["comp", "mm", "logn", "cn", "LM"], "cnzLS": ["comp", "mm", "logn", "cn", "LD", "LT", "LR", "LM"],
          "cnzCh": ["comp", "mm", "logn", "cn", "chrom"],
+         "cnzMI": ["comp", "mm", "logn", "cn", "moranz"], "cnzMIr": ["comp", "mm", "logn", "cn", "moranr"],
+         "cnzMIT": ["comp", "mm", "logn", "cn", "moranz", "znull"],
+         "cnz32": ["comp", "mm", "logn", "cn", "znull32"], "cnzPt": ["comp", "mm", "logn", "cn", "znullp"],
+         "cnzNC": ["comp", "mm", "logn", "cn", "znullnc"],
          "cnz": ["comp", "mm", "logn", "cn", "znull"], "c_cnz": ["comp", "logn", "cn", "znull"],
          "c_ctype": ["comp", "logn", "ctype"], "c_ctype_cross": ["comp", "logn", "ctype", "cross"]}
 G = {}
@@ -70,10 +74,12 @@ def patient_feats(cohort):
         _f = os.path.join(C.cohort_dir(cohort), f"feats_{_k}.npz")
         if os.path.exists(_f):
             z = np.load(_f); assert (z["image_id"] == fe["image_id"]).all(); fe[_k] = z[_k]
-    for _k in ("znulld", "conn", "alttopo", "chrom"):
+    for _k in ("znulld", "conn", "alttopo", "chrom", "moran", "znull32", "znullp", "znullnc"):
         _f = os.path.join(C.cohort_dir(cohort), f"feats_{_k}.npz")
         if os.path.exists(_f):
             z = np.load(_f); assert (z["image_id"] == fe["image_id"]).all(); fe[_k] = z[_k]
+    if "moran" in fe:
+        _h = fe["moran"].shape[1] // 2; fe["moranr"], fe["moranz"] = fe["moran"][:, :_h], fe["moran"][:, _h:]
     if "conn" in fe:
         _h = fe["conn"].shape[1] // 2; fe["connr"], fe["connz"] = fe["conn"][:, :_h], fe["conn"][:, _h:]
     if "alttopo" in fe:

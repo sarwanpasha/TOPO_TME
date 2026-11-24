@@ -246,3 +246,29 @@ def build_model(method, p_dim, comp_dim, out_dim, init_idx=None):
     if spec in ("field", "field_nocomp"):
         return FieldPH(p_dim, comp_dim, out_dim, use_comp=(spec == "field"), init_idx=init_idx)
     return _build_old(method, p_dim, comp_dim, out_dim)
+
+
+# ---- GIN with a composition skip connection and a small hyperparameter grid (tuned by inner validation) ----
+class GNNc(nn.Module):
+    """GIN embedding (mean+max pooling) concatenated with the image composition vector before the head, so that the
+    graph model has at least the information of the composition model."""
+    def __init__(self, p_dim, comp_dim, out_dim, hidden=64, layers=3, dropout=0.2):
+        super().__init__()
+        self.g = GNN(p_dim, out_dim, kind="gin", hidden=hidden, layers=layers, dropout=dropout, head=False)
+        self.c = nn.Sequential(nn.Linear(comp_dim, hidden), nn.ReLU())
+        self.head = nn.Sequential(nn.Linear(3 * hidden, hidden), nn.ReLU(), nn.Dropout(dropout), nn.Linear(hidden, out_dim))
+
+    def forward(self, im, t, p, comp):
+        return self.head(torch.cat([self.g.embed(t, p), self.c(comp)]))
+
+
+GNNC_GRID = {"ginc": dict(hidden=64, layers=3, dropout=0.2), "ginc_l2": dict(hidden=64, layers=2, dropout=0.2),
+             "ginc_h128": dict(hidden=128, layers=3, dropout=0.2), "ginc_d5": dict(hidden=64, layers=3, dropout=0.5)}
+METHODS.update({k: "ginc" for k in GNNC_GRID})
+_build_prev = build_model
+
+
+def build_model(method, p_dim, comp_dim, out_dim, init_idx=None):
+    if method in GNNC_GRID:
+        return GNNc(p_dim, comp_dim, out_dim, **GNNC_GRID[method])
+    return _build_prev(method, p_dim, comp_dim, out_dim, init_idx=init_idx)
