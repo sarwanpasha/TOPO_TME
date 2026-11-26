@@ -10,7 +10,7 @@ from scipy.stats import norm
 import common as C
 import paired, paired_fast
 met = paired_fast.met
-COH = ("danenberg", "basel", "basel_ext", "codex", "luad")
+COH = tuple(os.environ.get("COHORTS", "danenberg,basel,basel_ext,codex,luad").split(","))
 B = int(sys.argv[sys.argv.index("--B") + 1]) if "--B" in sys.argv else 500
 
 
